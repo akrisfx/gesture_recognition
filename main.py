@@ -5,6 +5,38 @@ import time
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
+def get_fingers_status(hand_landmarks):
+    # Индексы точек для кончиков пальцев и их соседей
+    tips_ids = [4, 8, 12, 16, 20]
+    fingers = []
+    # Большой палец
+    if hand_landmarks.landmark[tips_ids[0]].x < hand_landmarks.landmark[tips_ids[0] - 1].x:
+        fingers.append(1)
+    else:
+        fingers.append(0)
+    # Остальные пальцы
+    for i in range(1, 5):
+        if hand_landmarks.landmark[tips_ids[i]].y < hand_landmarks.landmark[tips_ids[i] - 2].y:
+            fingers.append(1)
+        else:
+            fingers.append(0)
+    return fingers
+
+def gesture_name(fingers):
+    # Примеры простых жестов
+    if fingers == [0, 1, 0, 0, 0]:
+        return 'Указательный вверх'
+    elif fingers == [0, 1, 1, 0, 0]:
+        return 'V (два пальца)'
+    elif fingers == [0, 1, 1, 1, 1]:
+        return 'Четыре пальца'
+    elif fingers == [1, 1, 1, 1, 1]:
+        return 'Открытая ладонь'
+    elif fingers == [0, 0, 0, 0, 0]:
+        return 'Кулак'
+    else:
+        return 'Неизвестно'
+
 # Инициализация захвата видео
 cap = cv2.VideoCapture(0)
 prev_time = 0
@@ -25,11 +57,13 @@ with mp_hands.Hands(
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
+        gesture = 'Нет руки'
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(
                     image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-                # Пример: выводим координаты первой точки ладони
+                fingers = get_fingers_status(hand_landmarks)
+                gesture = gesture_name(fingers)
                 print('Landmark 0:', hand_landmarks.landmark[0])
 
         # FPS
@@ -37,6 +71,7 @@ with mp_hands.Hands(
         fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
         prev_time = curr_time
         cv2.putText(image, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(image, f'Жест: {gesture}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         cv2.imshow('Hand Gesture Recognition', image)
         if cv2.waitKey(1) & 0xFF == 27:
