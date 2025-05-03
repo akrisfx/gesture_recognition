@@ -20,7 +20,7 @@ class GestureClassifier:
         10: ('OK Sign', [1, 0, 1, 1, 1]),
         11: ('German 3 Fingers', [1, 1, 1, 0, 0]),
         12: ('ROCK', [0, 1, 1, 0, 1]),
-        13: ('ROCK2', [1, 1, 0, 0, 1]),
+        13: ('Jambo', [1, 0, 0, 0, 1]),
     }
 
     @classmethod
