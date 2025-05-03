@@ -71,7 +71,7 @@ with mp_hands.Hands(
         fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
         prev_time = curr_time
         cv2.putText(image, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(image, f'Жест: {gesture}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(image, f'Gest: {gesture}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         cv2.imshow('Hand Gesture Recognition', image)
         if cv2.waitKey(1) & 0xFF == 27:
