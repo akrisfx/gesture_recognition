@@ -10,8 +10,17 @@ class GestureClassifier:
         0: ('Fist', [0, 0, 0, 0, 0]),
         1: ('Index Up', [0, 1, 0, 0, 0]),
         2: ('V (Two Fingers)', [0, 1, 1, 0, 0]),
-        3: ('Four Fingers', [0, 1, 1, 1, 1]),
-        4: ('Open Palm', [1, 1, 1, 1, 1]),
+        3: ('Three Fingers', [0, 1, 1, 1, 0]),
+        4: ('Four Fingers', [0, 1, 1, 1, 1]),
+        5: ('Open Palm', [1, 1, 1, 1, 1]),
+        6: ('Thumb Up', [1, 0, 0, 0, 0]),
+        7: ('Pinky Up', [0, 0, 0, 0, 1]),
+        8: ('Rock Sign', [1, 0, 0, 0, 1]),
+        9: ('Spider-Man', [1, 1, 0, 0, 1]),
+        10: ('OK Sign', [1, 0, 1, 1, 1]),
+        11: ('German 3 Fingers', [1, 1, 1, 0, 0]),
+        12: ('ROCK', [0, 1, 1, 0, 1]),
+        13: ('ROCK2', [1, 1, 0, 0, 1]),
     }
 
     @classmethod
