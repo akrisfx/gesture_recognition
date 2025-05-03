@@ -5,6 +5,31 @@ import time
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
+class GestureClassifier:
+    GESTURES = {
+        0: ('Fist', [0, 0, 0, 0, 0]),
+        1: ('Index Up', [0, 1, 0, 0, 0]),
+        2: ('V (Two Fingers)', [0, 1, 1, 0, 0]),
+        3: ('Four Fingers', [0, 1, 1, 1, 1]),
+        4: ('Open Palm', [1, 1, 1, 1, 1]),
+    }
+
+    @classmethod
+    def get_gesture_index(cls, fingers):
+        for idx, (_, pattern) in cls.GESTURES.items():
+            if fingers == pattern:
+                return idx
+        return -1
+
+    @classmethod
+    def get_gesture_name(cls, idx):
+        return cls.GESTURES.get(idx, ('Unknown', []))[0]
+
+    @classmethod
+    def classify(cls, fingers):
+        idx = cls.get_gesture_index(fingers)
+        return idx, cls.get_gesture_name(idx)
+
 def get_fingers_status(hand_landmarks):
     # Индексы точек для кончиков пальцев и их соседей
     tips_ids = [4, 8, 12, 16, 20]
@@ -21,21 +46,6 @@ def get_fingers_status(hand_landmarks):
         else:
             fingers.append(0)
     return fingers
-
-def gesture_name(fingers):
-    # Примеры простых жестов
-    if fingers == [0, 1, 0, 0, 0]:
-        return 'Index finger'
-    elif fingers == [0, 1, 1, 0, 0]:
-        return 'V 2-3'
-    elif fingers == [0, 1, 1, 1, 1]:
-        return '2-5'
-    elif fingers == [1, 1, 1, 1, 1]:
-        return 'Open hand'
-    elif fingers == [0, 0, 0, 0, 0]:
-        return 'Closed hand'
-    else:
-        return 'Unknown'
 
 # Инициализация захвата видео
 cap = cv2.VideoCapture(0)
@@ -57,13 +67,14 @@ with mp_hands.Hands(
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
+        gesture_idx = -1
         gesture = 'No hand'
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(
                     image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
                 fingers = get_fingers_status(hand_landmarks)
-                gesture = gesture_name(fingers)
+                gesture_idx, gesture = GestureClassifier.classify(fingers)
                 print('Landmark 0:', hand_landmarks.landmark[0])
 
         # FPS
@@ -71,7 +82,7 @@ with mp_hands.Hands(
         fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
         prev_time = curr_time
         cv2.putText(image, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(image, f'Gest: {gesture}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(image, f'Gesture: {gesture} (#{gesture_idx})', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         cv2.imshow('Hand Gesture Recognition', image)
         if cv2.waitKey(1) & 0xFF == 27:
