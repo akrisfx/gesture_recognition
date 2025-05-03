@@ -25,17 +25,17 @@ def get_fingers_status(hand_landmarks):
 def gesture_name(fingers):
     # Примеры простых жестов
     if fingers == [0, 1, 0, 0, 0]:
-        return 'Указательный вверх'
+        return 'Index finger'
     elif fingers == [0, 1, 1, 0, 0]:
-        return 'V (два пальца)'
+        return 'V 2-3'
     elif fingers == [0, 1, 1, 1, 1]:
-        return 'Четыре пальца'
+        return '2-5'
     elif fingers == [1, 1, 1, 1, 1]:
-        return 'Открытая ладонь'
+        return 'Open hand'
     elif fingers == [0, 0, 0, 0, 0]:
-        return 'Кулак'
+        return 'Closed hand'
     else:
-        return 'Неизвестно'
+        return 'Unknown'
 
 # Инициализация захвата видео
 cap = cv2.VideoCapture(0)
@@ -57,7 +57,7 @@ with mp_hands.Hands(
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-        gesture = 'Нет руки'
+        gesture = 'No hand'
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(
