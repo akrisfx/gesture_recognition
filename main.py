@@ -21,6 +21,7 @@ class GestureClassifier:
         11: ('German 3 Fingers', [1, 1, 1, 0, 0]),
         12: ('ROCK', [0, 1, 1, 0, 1]),
         13: ('Jambo', [1, 0, 0, 0, 1]),
+        14: ('Four Fingers 2', [1, 1, 1, 1, 0]),
     }
 
     @classmethod
