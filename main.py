@@ -68,7 +68,7 @@ class GestureValidator:
         self.valid_sequence = [5, 0]  # Open Palm -> Fist
         self.ready = False
         self.last_gest = -1
-        self.gesture_start_time = None
+        self.gesture_start_time = time.time()  # Инициализируем текущим временем вместо None
         self.hold_time_ms = 200  # Минимальное время удержания жеста (мс)
     
     def update(self, gesture_idx):
@@ -82,7 +82,12 @@ class GestureValidator:
             held_long_enough = False
         else:
             # Проверяем, достаточно ли долго держится жест
-            held_long_enough = (current_time - self.gesture_start_time) * 1000 >= self.hold_time_ms
+            # Защита от None значения в self.gesture_start_time
+            if self.gesture_start_time is None:
+                self.gesture_start_time = current_time
+                held_long_enough = False
+            else:
+                held_long_enough = (current_time - self.gesture_start_time) * 1000 >= self.hold_time_ms
         
         if not self.ready:
             # Ожидаем следующий жест из валидной последовательности
