@@ -15,7 +15,7 @@ class GestureClassifier:
         5: ('Open Palm', [1, 1, 1, 1, 1]),
         6: ('Thumb Up', [1, 0, 0, 0, 0]),
         7: ('Pinky Up', [0, 0, 0, 0, 1]),
-        8: ('Rock Sign', [1, 0, 0, 0, 1]),
+        8: ('Rock Sign', [0, 1, 0, 0, 1]),
         9: ('Spider-Man', [1, 1, 0, 0, 1]),
         10: ('OK Sign', [1, 0, 1, 1, 1]),
         11: ('German 3 Fingers', [1, 1, 1, 0, 0]),
@@ -109,7 +109,6 @@ class GestureValidator:
                 valid_gesture = gesture_idx
                 self.sequence = []
                 self.ready = False
-                print(valid_gesture)
                 return valid_gesture  # Возвращаем валидный жест
             elif gesture_idx == self.valid_sequence[0] and held_long_enough:
                 # Если снова показан Open Palm и держится достаточно долго — сбрасываем и начинаем заново
@@ -157,6 +156,7 @@ with mp_hands.Hands(
         if validated_gesture is not None:
             gesture_idx = validated_gesture
             gesture = GestureClassifier.get_gesture_name(gesture_idx)
+            print (gesture, gesture_idx)
         else:
             gesture_idx = 0
             gesture = 'pending'
