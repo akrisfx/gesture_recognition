@@ -45,17 +45,39 @@ def get_fingers_status(hand_landmarks):
     # Индексы точек для кончиков пальцев и их соседей
     tips_ids = [4, 8, 12, 16, 20]
     fingers = []
+    
+    # Определяем, какая сторона руки видна (ладонь или тыльная сторона)
+    # Используем точки на ладони для определения ориентации
+    wrist = hand_landmarks.landmark[0]  # запястье
+    middle_base = hand_landmarks.landmark[9]  # основание среднего пальца
+    
+    # Определяем ориентацию на основе z-координаты
+    # Если ладонь направлена к камере, то пальцы имеют большее значение z, чем запястье
+    palm_facing_camera = middle_base.z < wrist.z
+    
     # Большой палец
-    if hand_landmarks.landmark[tips_ids[0]].x < hand_landmarks.landmark[tips_ids[0] - 1].x:
-        fingers.append(1)
+    # Логика для тыльной стороны руки
+    if palm_facing_camera:
+        # Если ладонь к камере, то большой палец поднят, когда его x больше соседа
+        if hand_landmarks.landmark[tips_ids[0]].x > hand_landmarks.landmark[tips_ids[0] - 1].x:
+            fingers.append(1)
+        else:
+            fingers.append(0)
     else:
-        fingers.append(0)
-    # Остальные пальцы
+        # Логика для тыльной стороны руки (как было раньше)
+        if hand_landmarks.landmark[tips_ids[0]].x < hand_landmarks.landmark[tips_ids[0] - 1].x:
+            fingers.append(1)
+        else:
+            fingers.append(0)
+    
+    # Остальные пальцы - логика не меняется, только знак сравнения
     for i in range(1, 5):
+        # Для обеих сторон руки логика одинакова: палец поднят, если y кончика меньше y соседа
         if hand_landmarks.landmark[tips_ids[i]].y < hand_landmarks.landmark[tips_ids[i] - 2].y:
             fingers.append(1)
         else:
             fingers.append(0)
+    
     return fingers
 
 class GestureValidator:
