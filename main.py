@@ -42,60 +42,20 @@ class GestureClassifier:
         return idx, cls.get_gesture_name(idx)
 
 def get_fingers_status(hand_landmarks):
-    """
-    Определяет положение пальцев (поднят/опущен) с использованием более надежного
-    метода, основанного на относительных позициях ключевых точек.
-    """
-    # Индексы точек для кончиков пальцев
-    tips_ids = [4, 8, 12, 16, 20]  # большой, указательный, средний, безымянный, мизинец
-    # Индексы точек для средних фаланг
-    mid_ids = [3, 7, 11, 15, 19]
-    # Индексы точек для нижних фаланг
-    pip_ids = [2, 6, 10, 14, 18]
-    # Индексы точек для оснований пальцев
-    mcp_ids = [1, 5, 9, 13, 17]
-    
-    # Запястье для ориентации
-    wrist = hand_landmarks.landmark[0]
-    
+    # Индексы точек для кончиков пальцев и их соседей
+    tips_ids = [4, 8, 12, 16, 20]
     fingers = []
-    
-    # Для большого пальца используем другой подход
-    # Сравниваем кончик с серединой ладони
-    thumb_tip = hand_landmarks.landmark[tips_ids[0]]
-    index_mcp = hand_landmarks.landmark[5]  # основание указательного пальца
-    middle_mcp = hand_landmarks.landmark[9]  # основание среднего пальца
-    
-    # Вычисляем среднюю точку между основаниями указательного и среднего пальцев
-    palm_center_x = (index_mcp.x + middle_mcp.x) / 2
-    palm_center_y = (index_mcp.y + middle_mcp.y) / 2
-    
-    # Если кончик большого пальца дальше от запястья, чем середина ладони, 
-    # считаем палец поднятым
-    wrist_to_tip_dist = ((thumb_tip.x - wrist.x)**2 + (thumb_tip.y - wrist.y)**2)**0.5
-    wrist_to_palm_dist = ((palm_center_x - wrist.x)**2 + (palm_center_y - wrist.y)**2)**0.5
-    
-    # Большой палец считается поднятым, если его кончик дальше от запястья, чем середина ладони
-    fingers.append(1 if wrist_to_tip_dist > wrist_to_palm_dist else 0)
-    
-    # Для остальных пальцев используем расстояние
+    # Большой палец
+    if hand_landmarks.landmark[tips_ids[0]].x < hand_landmarks.landmark[tips_ids[0] - 1].x:
+        fingers.append(1)
+    else:
+        fingers.append(0)
+    # Остальные пальцы
     for i in range(1, 5):
-        # Кончик пальца
-        finger_tip = hand_landmarks.landmark[tips_ids[i]]
-        # Основание пальца
-        finger_base = hand_landmarks.landmark[mcp_ids[i]]
-        # Средняя фаланга
-        finger_mid = hand_landmarks.landmark[pip_ids[i]]
-        
-        # Вычисляем расстояние от кончика до запястья
-        tip_to_wrist_dist = ((finger_tip.x - wrist.x)**2 + (finger_tip.y - wrist.y)**2)**0.5
-        # Вычисляем расстояние от средней фаланги до запястья
-        mid_to_wrist_dist = ((finger_mid.x - wrist.x)**2 + (finger_mid.y - wrist.y)**2)**0.5
-        
-        # Если кончик пальца дальше от запястья, чем средняя фаланга, 
-        # считаем палец поднятым
-        fingers.append(1 if tip_to_wrist_dist > mid_to_wrist_dist else 0)
-    
+        if hand_landmarks.landmark[tips_ids[i]].y < hand_landmarks.landmark[tips_ids[i] - 2].y:
+            fingers.append(1)
+        else:
+            fingers.append(0)
     return fingers
 
 class GestureValidator:
