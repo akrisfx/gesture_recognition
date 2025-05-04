@@ -77,6 +77,11 @@ class GestureValidator:
                 # Если вся последовательность показана, устанавливаем флаг готовности
                 if len(self.sequence) == len(self.valid_sequence):
                     self.ready = True
+
+            # обработка старого жеста но всё еще валидного
+            elif gesture_idx in self.sequence: 
+                # Если жест уже в последовательности, ничего не делаем
+                pass
             else:
                 # Если жест не совпал, сбрасываем последовательность
                 self.sequence = []
