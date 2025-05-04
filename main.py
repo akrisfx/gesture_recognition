@@ -94,6 +94,7 @@ class GestureValidator:
                 # Сброс последовательности и флага готовности
                 self.sequence = []
                 self.ready = False
+                print(gesture_idx)
                 return gesture_idx  # Возвращаем валидный жест
             elif gesture_idx == self.valid_sequence[0]:
                 # Если снова показан Open Palm — сбрасываем и начинаем заново
@@ -130,7 +131,7 @@ with mp_hands.Hands(
                     image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
                 fingers = get_fingers_status(hand_landmarks)
                 gesture_idx, gesture = GestureClassifier.classify(fingers)
-                print('Landmark 0:', hand_landmarks.landmark[0])
+                # print('Landmark 0:', hand_landmarks.landmark[0])
 
         # FPS
         curr_time = time.time()
