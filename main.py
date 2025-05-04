@@ -66,6 +66,7 @@ class GestureValidator:
         self.sequence = []
         self.valid_sequence = [5, 0]  # Open Palm -> Fist
         self.ready = False
+        self.last_gest = -1
     
     def update(self, gesture_idx):
         if not self.ready:
@@ -74,13 +75,15 @@ class GestureValidator:
             if gesture_idx == expected:
                 # Если жест совпал с ожидаемым, добавляем в последовательность
                 self.sequence.append(gesture_idx)
+                self.last_gest = gesture_idx
                 # Если вся последовательность показана, устанавливаем флаг готовности
                 if len(self.sequence) == len(self.valid_sequence):
                     self.ready = True
 
             # обработка старого жеста но всё еще валидного
-            elif gesture_idx in self.sequence: 
+            elif gesture_idx == self.last_gest: 
                 # Если жест уже в последовательности, ничего не делаем
+                time.sleep(0.1)
                 pass
             else:
                 # Если жест не совпал, сбрасываем последовательность
