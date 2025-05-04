@@ -61,43 +61,52 @@ class GestureValidator:
     '''Идея состоит в том, что мы регистрируем срабатывание жеста только при опрделенной последовательности
     жестов. Тоесть чтобы жест был распознан, сначала пользователь должен показать Open Palm, после сжать кулак,
     и после этого показать жест который он хочет показать, тем самым мы избегаем случайного распознавания жестов.
-    При этом, любой отход от этой последовательности сбрасывает её.'''
+    При этом, любой отход от этой последовательности сбрасывает её.
+    Также жест должен удерживаться не менее 200 мс, чтобы считаться валидным.'''
     def __init__(self):
         self.sequence = []
         self.valid_sequence = [5, 0]  # Open Palm -> Fist
         self.ready = False
         self.last_gest = -1
+        self.gesture_start_time = None
+        self.hold_time_ms = 200  # Минимальное время удержания жеста (мс)
     
     def update(self, gesture_idx):
+        current_time = time.time()
+        
+        # Проверка удержания жеста
+        if gesture_idx != self.last_gest:
+            # Жест изменился, сбрасываем таймер
+            self.gesture_start_time = current_time
+            self.last_gest = gesture_idx
+            held_long_enough = False
+        else:
+            # Проверяем, достаточно ли долго держится жест
+            held_long_enough = (current_time - self.gesture_start_time) * 1000 >= self.hold_time_ms
+        
         if not self.ready:
             # Ожидаем следующий жест из валидной последовательности
-            expected = self.valid_sequence[len(self.sequence)]
-            if gesture_idx == expected:
-                # Если жест совпал с ожидаемым, добавляем в последовательность
-                self.sequence.append(gesture_idx)
-                self.last_gest = gesture_idx
-                # Если вся последовательность показана, устанавливаем флаг готовности
-                if len(self.sequence) == len(self.valid_sequence):
-                    self.ready = True
-
-            # обработка старого жеста но всё еще валидного
-            elif gesture_idx == self.last_gest: 
-                # Если жест уже в последовательности, ничего не делаем
-                time.sleep(0.1)
-                pass
-            else:
-                # Если жест не совпал, сбрасываем последовательность
-                self.sequence = []
+            if len(self.sequence) < len(self.valid_sequence):
+                expected = self.valid_sequence[len(self.sequence)]
+                if gesture_idx == expected and held_long_enough:
+                    # Если жест совпал с ожидаемым и держится достаточно долго, добавляем в последовательность
+                    self.sequence.append(gesture_idx)
+                    # Если вся последовательность показана, устанавливаем флаг готовности
+                    if len(self.sequence) == len(self.valid_sequence):
+                        self.ready = True
+                elif gesture_idx != expected and gesture_idx != self.last_gest:
+                    # Если показан неожиданный жест, сбрасываем последовательность
+                    self.sequence = []
         else:
             # После успешной последовательности принимаем любой жест, кроме Open Palm и Fist
-            if gesture_idx not in self.valid_sequence and gesture_idx != -1:
+            if gesture_idx not in self.valid_sequence and gesture_idx != -1 and held_long_enough:
                 # Сброс последовательности и флага готовности
+                valid_gesture = gesture_idx
                 self.sequence = []
                 self.ready = False
-                print(gesture_idx)
-                return gesture_idx  # Возвращаем валидный жест
-            elif gesture_idx == self.valid_sequence[0]:
-                # Если снова показан Open Palm — сбрасываем и начинаем заново
+                return valid_gesture  # Возвращаем валидный жест
+            elif gesture_idx == self.valid_sequence[0] and held_long_enough:
+                # Если снова показан Open Palm и держится достаточно долго — сбрасываем и начинаем заново
                 self.sequence = [gesture_idx]
                 self.ready = False
         return None
