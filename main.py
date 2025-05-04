@@ -109,6 +109,7 @@ class GestureValidator:
                 valid_gesture = gesture_idx
                 self.sequence = []
                 self.ready = False
+                print(valid_gesture)
                 return valid_gesture  # Возвращаем валидный жест
             elif gesture_idx == self.valid_sequence[0] and held_long_enough:
                 # Если снова показан Open Palm и держится достаточно долго — сбрасываем и начинаем заново
