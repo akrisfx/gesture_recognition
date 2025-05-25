@@ -1,0 +1,52 @@
+{
+  "1": {
+    "type": "key",
+    "command": "ctrl+c",
+    "description": "Копировать"
+  },
+  "2": {
+    "type": "key",
+    "command": "ctrl+v",
+    "description": "Вставить"
+  },
+  "3": {
+    "type": "key",
+    "command": "win+v",
+    "description": "Переключить окно"
+  },
+  "6": {
+    "type": "key",
+    "command": "space",
+    "description": "Пробел"
+  },
+  "7": {
+    "type": "cmd",
+    "command": "dir",
+    "description": "Показать файлы в папке"
+  },
+  "8": {
+    "type": "app",
+    "command": "notepad",
+    "description": "Открыть блокнот"
+  },
+  "9": {
+    "type": "key",
+    "command": "f11",
+    "description": "Полноэкранный режим"
+  },
+  "10": {
+    "type": "app",
+    "command": "calc",
+    "description": "Калькулятор"
+  },
+  "11": {
+    "type": "cmd",
+    "command": "ipconfig",
+    "description": "Информация о сети"
+  },
+  "12": {
+    "type": "cmd",
+    "command": "echo Hello from gesture!",
+    "description": "Вывести приветствие"
+  }
+}

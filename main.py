@@ -1,6 +1,8 @@
 import cv2
 import mediapipe as mp
 import time
+import threading
+from command_executor import CommandExecutor
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
@@ -121,6 +123,23 @@ class GestureValidator:
 cap = cv2.VideoCapture(0)
 prev_time = 0
 
+# Создаем исполнитель команд
+command_executor = CommandExecutor()
+
+# Переменные для отслеживания изменений конфигурации
+import os
+last_config_check = time.time()
+config_check_interval = 1.0  # Проверяем файл конфигурации каждую секунду
+
+def open_settings():
+    """Открывает окно настроек"""
+    try:
+        from settings_gui import SettingsGUI
+        settings = SettingsGUI()
+        settings.run()
+    except Exception as e:
+        print(f"Ошибка открытия настроек: {e}")
+
 with mp_hands.Hands(
     max_num_hands=1,
     min_detection_confidence=0.7,
@@ -147,26 +166,48 @@ with mp_hands.Hands(
                 fingers = get_fingers_status(hand_landmarks)
                 gesture_idx, gesture = GestureClassifier.classify(fingers)
                 # print('Landmark 0:', hand_landmarks.landmark[0])
-
-        # FPS
+          # FPS
         curr_time = time.time()
         fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
         prev_time = curr_time
-
-        validated_gesture = validator.update(gesture_idx)
+        
+        # Проверяем, нужно ли перезагрузить конфигурацию
+        if curr_time - last_config_check > config_check_interval:
+            try:
+                config_file = command_executor.config_file
+                if os.path.exists(config_file):
+                    config_mtime = os.path.getmtime(config_file)
+                    if not hasattr(command_executor, '_last_config_mtime'):
+                        command_executor._last_config_mtime = config_mtime
+                    elif config_mtime > command_executor._last_config_mtime:
+                        print("Конфигурация изменена, перезагружаем...")
+                        command_executor.reload_config()
+                        command_executor._last_config_mtime = config_mtime
+            except Exception as e:
+                print(f"Ошибка проверки конфигурации: {e}")
+            last_config_check = curr_time
+        
+        validated_gesture = validator.update(gesture_idx)        
         if validated_gesture is not None:
             gesture_idx = validated_gesture
             gesture = GestureClassifier.get_gesture_name(gesture_idx)
-            print (gesture, gesture_idx)
+            print(gesture, gesture_idx)
+            # ВЫПОЛНЯЕМ КОМАНДУ ДЛЯ ЖЕСТА!
+            command_executor.execute_gesture_command(gesture_idx)
         else:
             gesture_idx = 0
             gesture = 'pending'
+        
         cv2.putText(image, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         cv2.putText(image, f'Gesture: {gesture} (#{gesture_idx})', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(image, 'Press S for Settings, ESC to exit', (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
         cv2.imshow('Hand Gesture Recognition', image)
-        if cv2.waitKey(1) & 0xFF == 27:
+        key = cv2.waitKey(1) & 0xFF
+        if key == 27:  # ESC
             break
+        elif key == ord('s') or key == ord('S'):  # S for settings
+            open_settings()
 
 cap.release()
 cv2.destroyAllWindows()
