@@ -12,7 +12,7 @@
   "3": {
     "type": "key",
     "command": "win+v",
-    "description": "Переключить окно"
+    "description": "Показать буфер обмена"
   },
   "6": {
     "type": "key",

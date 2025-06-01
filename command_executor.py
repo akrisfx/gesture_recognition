@@ -122,7 +122,7 @@ class CommandExecutor:
             print(f"Ошибка выполнения команды: {e}")
     
     def _execute_application(self, app_name):
-        """Запускает приложение"""
+        """Запускает приложение"""        
         try:
             subprocess.Popen(app_name, shell=True)
         except Exception as e:
@@ -132,11 +132,19 @@ class CommandExecutor:
         """Выполняет консольную команду"""
         try:
             print(f"Выполняю команду: {command}")
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=10)
+            
+            # Определяем кодировку в зависимости от команды
+            encoding = 'cp1251'  # Для Windows команд
+            
+            # Выполняем команду с правильной кодировкой
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, 
+                                  encoding=encoding, timeout=10)
+            
             if result.stdout:
                 print(f"Результат: {result.stdout.strip()}")
             if result.stderr:
                 print(f"Ошибка: {result.stderr.strip()}")
+                
         except subprocess.TimeoutExpired:
             print(f"Команда '{command}' превысила время ожидания (10 сек)")
         except Exception as e:

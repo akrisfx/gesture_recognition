@@ -2,6 +2,8 @@ import cv2
 import mediapipe as mp
 import time
 import threading
+import argparse
+import os
 from command_executor import CommandExecutor
 
 mp_hands = mp.solutions.hands
@@ -119,6 +121,126 @@ class GestureValidator:
                 self.ready = False
         return None
 
+def parse_arguments():
+    """Разбор аргументов командной строки"""
+    parser = argparse.ArgumentParser(description='Система распознавания жестов')
+    parser.add_argument('--our_mp', action='store_true', 
+                        help='Использовать нашу обученную YOLO модель вместо MediaPipe')
+    return parser.parse_args()
+
+def create_detector(use_our_model=False):
+    """Создает детектор в зависимости от выбранной модели"""
+    if use_our_model:
+        # Проверяем наличие файла модели
+        if not os.path.exists('./best.pt'):
+            print("Ошибка: Файл модели './best.pt' не найден!")
+            print("Переключаюсь на MediaPipe...")
+            use_our_model = False
+        else:
+            try:
+                from ultralytics import YOLO
+                print("Инициализация YOLO модели...")
+                return YOLO('./best.pt').to('cpu'), 'yolo'
+            except ImportError:
+                print("Ошибка: ultralytics не установлен!")
+                print("Установите: pip install ultralytics")
+                print("Переключаюсь на MediaPipe...")
+                use_our_model = False
+    
+    if not use_our_model:
+        print("Инициализация MediaPipe...")
+        hands = mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=1,
+            min_detection_confidence=0.8,
+            min_tracking_confidence=0.5
+        )
+        return hands, 'mediapipe'
+
+def process_yolo_frame(model, image):
+    """Обрабатывает кадр с помощью YOLO модели"""
+    # Делаем предсказание
+    results = model.predict(
+        source=image,
+        imgsz=320,
+        conf=0.4,
+        device='cpu',
+        verbose=False
+    )
+    
+    # Проверяем наличие ключевых точек
+    if results and results[0].keypoints is not None:
+        kps_data = results[0].keypoints.xy[0].cpu().numpy()
+        
+        # Проверяем что есть хотя бы одна точка
+        if len(kps_data) > 0:
+            # Схема соединений для 21 точки руки
+            HAND_CONNECTIONS = [
+                (0, 1, 2, 3, 4),         # Большой палец
+                (0, 5, 6, 7, 8),         # Указательный палец
+                (0, 9, 10, 11, 12),      # Средний палец
+                (0, 13, 14, 15, 16),     # Безымянный палец
+                (0, 17, 18, 19, 20)      # Мизинец
+            ]
+            
+            # Рисуем соединения
+            for finger in HAND_CONNECTIONS:
+                for i in range(len(finger)-1):
+                    try:
+                        start = tuple(map(int, kps_data[finger[i]]))
+                        end = tuple(map(int, kps_data[finger[i+1]]))
+                        cv2.line(image, start, end, (255, 0, 0), 2)
+                    except (IndexError, ValueError):
+                        continue
+            
+            # Рисуем точки
+            for point in kps_data:
+                try:
+                    x, y = map(int, point)
+                    cv2.circle(image, (x, y), 4, (0, 255, 0), -1)
+                except (ValueError, IndexError):
+                    continue
+            
+            # Преобразуем координаты в формат для распознавания жестов
+            # Это упрощенная версия - нужно будет адаптировать под вашу логику жестов
+            fingers = analyze_yolo_keypoints(kps_data)
+            return fingers, True
+    
+    return None, False
+
+def analyze_yolo_keypoints(kps_data):
+    """Анализирует ключевые точки YOLO для определения состояния пальцев"""
+    # Это упрощенная версия - вам нужно будет адаптировать под вашу модель
+    # Индексы для кончиков пальцев в YOLO модели (может отличаться)
+    tips_ids = [4, 8, 12, 16, 20]  # Большой, указательный, средний, безымянный, мизинец
+    
+    if len(kps_data) < 21:
+        return [0, 0, 0, 0, 0]  # Если недостаточно точек
+    
+    fingers = []
+    
+    try:
+        # Большой палец (сравниваем x координаты)
+        if kps_data[4][0] > kps_data[3][0]:  # Кончик больше предыдущей точки по x
+            fingers.append(1)
+        else:
+            fingers.append(0)
+            
+        # Остальные пальцы (сравниваем y координаты)
+        for i in [8, 12, 16, 20]:  # Указательный, средний, безымянный, мизинец
+            if i < len(kps_data) and i-2 < len(kps_data):
+                if kps_data[i][1] < kps_data[i-2][1]:  # Кончик выше чем предыдущая точка
+                    fingers.append(1)
+                else:
+                    fingers.append(0)
+            else:
+                fingers.append(0)
+                
+    except (IndexError, ValueError):
+        return [0, 0, 0, 0, 0]
+    
+    return fingers
+
 # Инициализация захвата видео
 cap = cv2.VideoCapture(0)
 prev_time = 0
@@ -127,7 +249,6 @@ prev_time = 0
 command_executor = CommandExecutor()
 
 # Переменные для отслеживания изменений конфигурации
-import os
 last_config_check = time.time()
 config_check_interval = 1.0  # Проверяем файл конфигурации каждую секунду
 
@@ -140,33 +261,53 @@ def open_settings():
     except Exception as e:
         print(f"Ошибка открытия настроек: {e}")
 
-with mp_hands.Hands(
-    max_num_hands=1,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-) as hands:
+def main():
+    """Основная функция программы"""
+    global prev_time, last_config_check
+    
+    # Разбираем аргументы командной строки
+    args = parse_arguments()
+    
+    # Создаем детектор
+    detector, detector_type = create_detector(args.our_mp)
+    
+    print(f"Используется детектор: {detector_type}")
+    if detector_type == 'yolo':
+        print("Запуск с YOLO моделью (наша обученная модель)")
+    else:
+        print("Запуск с MediaPipe (стандартная модель)")
+    
     validator = GestureValidator()
+    
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-        # Переводим изображение в RGB
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        image.flags.writeable = False
-        results = hands.process(image)
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
         gesture_idx = -1
         gesture = 'No hand'
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(
-                    image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-                fingers = get_fingers_status(hand_landmarks)
+        image = frame.copy()
+        if detector_type == 'yolo':
+            # Обработка с YOLO
+            fingers, hand_detected = process_yolo_frame(detector, image)
+            if hand_detected:
                 gesture_idx, gesture = GestureClassifier.classify(fingers)
-                # print('Landmark 0:', hand_landmarks.landmark[0])
-          # FPS
+        else:
+            # Обработка с MediaPipe
+            # Переводим изображение в RGB
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = detector.process(image)
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(
+                        image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                    fingers = get_fingers_status(hand_landmarks)
+                    gesture_idx, gesture = GestureClassifier.classify(fingers)
+        
+        # FPS
         curr_time = time.time()
         fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
         prev_time = curr_time
@@ -198,9 +339,12 @@ with mp_hands.Hands(
             gesture_idx = 0
             gesture = 'pending'
         
-        cv2.putText(image, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(image, f'Gesture: {gesture} (#{gesture_idx})', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        cv2.putText(image, 'Press S for Settings, ESC to exit', (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        # Отображаем информацию
+        model_info = "YOLO" if detector_type == 'yolo' else "MediaPipe"
+        cv2.putText(image, f'Model: {model_info}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(image, f'FPS: {fps:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(image, f'Gesture: {gesture} (#{gesture_idx})', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        cv2.putText(image, 'Press S for Settings, ESC to exit', (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
         cv2.imshow('Hand Gesture Recognition', image)
         key = cv2.waitKey(1) & 0xFF
@@ -209,5 +353,7 @@ with mp_hands.Hands(
         elif key == ord('s') or key == ord('S'):  # S for settings
             open_settings()
 
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
+    cap.release()
+    cv2.destroyAllWindows()
