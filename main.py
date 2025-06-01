@@ -48,15 +48,17 @@ class GestureClassifier:
 def get_fingers_status(hand_landmarks):
     # Индексы точек для кончиков пальцев и их соседей
     tips_ids = [4, 8, 12, 16, 20]
-    fingers = []
-    # Большой палец
-    if hand_landmarks.landmark[tips_ids[0]].x < hand_landmarks.landmark[tips_ids[0] - 1].x:
+    fingers = []    # Большой палец с порогом по x
+    thumb_threshold = 0.02  # нормализованное расстояние
+    if hand_landmarks.landmark[tips_ids[0]].x < hand_landmarks.landmark[tips_ids[0] - 2].x - thumb_threshold:
         fingers.append(1)
     else:
         fingers.append(0)
-    # Остальные пальцы
+    
+    # Остальные пальцы с порогом по y
+    finger_threshold = 0.03  # нормализованное расстояние
     for i in range(1, 5):
-        if hand_landmarks.landmark[tips_ids[i]].y < hand_landmarks.landmark[tips_ids[i] - 2].y:
+        if hand_landmarks.landmark[tips_ids[i]].y < hand_landmarks.landmark[tips_ids[i] - 2].y - finger_threshold:
             fingers.append(1)
         else:
             fingers.append(0)
@@ -156,6 +158,14 @@ def create_detector(use_our_model=False):
             min_tracking_confidence=0.5
         )
         return hands, 'mediapipe'
+    
+HAND_CONNECTIONS = [
+                (0, 1, 2, 3, 4),         # Большой палец
+                (0, 5, 6, 7, 8),         # Указательный палец
+                (0, 9, 10, 11, 12),      # Средний палец
+                (0, 13, 14, 15, 16),     # Безымянный палец
+                (0, 17, 18, 19, 20)      # Мизинец
+            ]
 
 def process_yolo_frame(model, image):
     """Обрабатывает кадр с помощью YOLO модели"""
@@ -175,13 +185,6 @@ def process_yolo_frame(model, image):
         # Проверяем что есть хотя бы одна точка
         if len(kps_data) > 0:
             # Схема соединений для 21 точки руки
-            HAND_CONNECTIONS = [
-                (0, 1, 2, 3, 4),         # Большой палец
-                (0, 5, 6, 7, 8),         # Указательный палец
-                (0, 9, 10, 11, 12),      # Средний палец
-                (0, 13, 14, 15, 16),     # Безымянный палец
-                (0, 17, 18, 19, 20)      # Мизинец
-            ]
             
             # Рисуем соединения
             for finger in HAND_CONNECTIONS:
@@ -212,27 +215,22 @@ def analyze_yolo_keypoints(kps_data):
     """Анализирует ключевые точки YOLO для определения состояния пальцев"""
     # Это упрощенная версия - вам нужно будет адаптировать под вашу модель
     # Индексы для кончиков пальцев в YOLO модели (может отличаться)
-    tips_ids = [4, 8, 12, 16, 20]  # Большой, указательный, средний, безымянный, мизинец
-    
-    if len(kps_data) < 21:
-        return [0, 0, 0, 0, 0]  # Если недостаточно точек
+    # tips_ids = [4, 8, 12, 16, 20]  # Большой, указательный, средний, безымянный, мизинец
     
     fingers = []
     
-    try:
-        # Большой палец (сравниваем x координаты)
-        if kps_data[4][0] > kps_data[3][0]:  # Кончик больше предыдущей точки по x
+    try:        # Большой палец (сравниваем x координаты с порогом)
+        x_threshold = 20  # увеличенный порог для более строгого определения
+        if kps_data[4][0] > kps_data[2][0] + x_threshold:  # Кончик значительно правее предыдущей точки (для правой руки)
             fingers.append(1)
         else:
             fingers.append(0)
-            
-        # Остальные пальцы (сравниваем y координаты)
+        
+        # Остальные пальцы (сравниваем y координаты с порогом)
+        y_threshold = 30  # пикселей
         for i in [8, 12, 16, 20]:  # Указательный, средний, безымянный, мизинец
-            if i < len(kps_data) and i-2 < len(kps_data):
-                if kps_data[i][1] < kps_data[i-2][1]:  # Кончик выше чем предыдущая точка
-                    fingers.append(1)
-                else:
-                    fingers.append(0)
+            if i-2 >= 0 and kps_data[i][1] < kps_data[i-2][1] - y_threshold:  # Кончик значительно выше предыдущей точки
+                fingers.append(1)
             else:
                 fingers.append(0)
                 
@@ -341,7 +339,7 @@ def main():
         
         # Отображаем информацию
         model_info = "YOLO" if detector_type == 'yolo' else "MediaPipe"
-        cv2.putText(image, f'Model: {model_info}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(image, f'Model: Our', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         cv2.putText(image, f'FPS: {fps:.2f}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         cv2.putText(image, f'Gesture: {gesture} (#{gesture_idx})', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
         cv2.putText(image, 'Press S for Settings, ESC to exit', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
