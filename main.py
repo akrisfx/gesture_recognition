@@ -338,8 +338,8 @@ def main():
             gesture = 'pending'
         
         # Отображаем информацию
-        model_info = "YOLO" if detector_type == 'yolo' else "MediaPipe"
-        cv2.putText(image, f'Model: Our', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        model_info = "Our" if detector_type == 'yolo' else "MediaPipe"
+        cv2.putText(image, f'Model: {model_info}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         cv2.putText(image, f'FPS: {fps:.2f}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         cv2.putText(image, f'Gesture: {gesture} (#{gesture_idx})', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
         cv2.putText(image, 'Press S for Settings, ESC to exit', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
